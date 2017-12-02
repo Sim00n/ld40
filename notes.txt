@@ -1,0 +1,45 @@
+Ludum Dare 40
+==========================
+
+Theme: The more you have, the worse it is.
+
+Interpretations:
+ - The more you have of "something", the worst "something else" is
+
+Name: Approaching Overload
+
+Ideas:
+ - Alcohol
+ - Kids
+ - Some kind of multiplication
+ - Age
+ - Memories
+ - Sexual partners (STDs)
+ - Patient 0 for new STD
+ 	- Might be an idler
+ 	- Jecklyn & Hyde
+ - Overpopulation 
+ - The more people you have, the worst the hunger gets
+ - The more homework you have, the worst your social life gets
+ - ATC - the more aircraft, the harder it is to control
+ - Moving airplanes at an airport
+ - The more anxiety the worst it gets
+
+
+Main Idea: ATC
+ - Loose condition:
+ 	- not giving hand-offs
+ 	- crashing tin
+ 	
+ - Win condition: 
+
+ - Levels?
+ 	- Shifts
+ 	- Pushes throughout a day
+
+ - challenges:
+ 	- runway changes
+ 	- emergency aircraft
+ 	
+
+ - scroll window to look up aircraft
