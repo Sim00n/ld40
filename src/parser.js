@@ -1,6 +1,29 @@
 function parseATCInstruction(instruction) {
-
 	console.log("Parser received: '" + instruction + "'");
+
+	if((instruction.indexOf("cleared") > 0 || instruction.indexOf("clear") > 0) && instruction.indexOf("approach") > 0) {
+		var callsign_search = instruction.match(/(\w+)\s(\d+)(.*)/);
+		console.log(callsign_search);
+		if(callsign_search && callsign_search.length == 4) {
+			var matched_name = airline_dictionary(callsign_search[1]);
+
+			if(!matched_name) {
+				matched_name = callsign_search[1];
+			}
+
+			console.log(matched_name);
+
+			var actual_name = matched_name + callsign_search[2];
+
+			console.log(actual_name);
+			for(var i = 0; i < aircraft.length; i++) {
+				if(aircraft[i].callsign == actual_name) {
+					aircraft[i].dest_alt = 500;
+				}
+			}
+		}
+
+	}
 
 	var heading_match = /(\w+)(.*)\s(\d+)(.*)heading\s(\d+)(.*)/;
 	var altitude_match = /(\w+)(.*)\s(\d+)(.*)(climb|descend|descent|maintain)(.*)/;
@@ -25,6 +48,8 @@ function parseATCInstruction(instruction) {
 		for(var i = 0; i < aircraft.length; i++) {
 			if(aircraft[i].callsign == actual_name) {
 				aircraft[i].dest_hdg = parseInt(heading_matched[5]);
+				chat = chat.splice(1);
+				chat.push("Fly heading " + aircraft[i].dest_hdg + ", " + aircraft[i].callsign);
 				console.log('Changing ' + aircraft[i].callsign + '\'s heading from ' + aircraft[i].hdg + ' to ' + aircraft[i].dest_hdg);
 			}
 		}
@@ -56,6 +81,13 @@ function parseATCInstruction(instruction) {
 			for(var i = 0; i < aircraft.length; i++) {
 				if(aircraft[i].callsign == actual_name) {
 					aircraft[i].dest_alt = dest_alt;
+					chat = chat.splice(1);
+					
+					if(aircraft[i].dest_alt > aircraft[i].alt) {
+						chat.push("Descend and maintain " + aircraft[i].dest_alt + ", " + aircraft[i].callsign);
+					} else {
+						chat.push("Climb and maintain " + aircraft[i].dest_alt + ", " + aircraft[i].callsign);
+					}
 				}
 			}
 		}
@@ -75,6 +107,8 @@ function parseATCInstruction(instruction) {
 		for(var i = 0; i < aircraft.length; i++) {
 			if(aircraft[i].callsign == actual_name) {
 				aircraft[i].show_datablock = false;
+				chat = chat.splice(1);
+				chat.push("Wilco, see ya, " + aircraft[i].callsign);
 			}
 		}
 	}

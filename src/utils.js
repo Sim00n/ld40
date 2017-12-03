@@ -15,7 +15,7 @@ function airline_dictionary(name) {
 		case 'delta': return 'DAL';
 		case 'jetblue': return 'JBU';
 		case 'southwest': return 'SWA';
-		case 'lot': return 'LOI';
+		case 'lot': return 'LOT';
 		default: return false;
 	}
 }
