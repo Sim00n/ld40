@@ -9,6 +9,11 @@ var chat = [' ', ' ', ' ', ' ', ' '];
 var chat_text = '';
 var landings = 0;
 var landing_count = null;
+var current_scenario = null;
+var flows = {};
+var clicked_position = null;
+var vectorline = null;
+var vectorlabel = null;
 var box = null;
 
 function preload() {
@@ -18,32 +23,6 @@ function preload() {
 	game.load.image('northflow', 'assets/maps/northflow.png');
 	game.load.image('southflow', 'assets/maps/southflow.png');
 	game.load.image('greenline', 'assets/greenline.png');
-	
-	/*for(var i = 0; i < 20; i++) {
-		var nac = {};
-
-		nac.actype = aircraft_types[parseInt(Math.random() * aircraft_types.length)];
-		nac.type = nac.actype.type;
-		nac.alt = parseInt(Math.random() * (aircraft_classes[nac.actype.weight].altitude.max - aircraft_classes[nac.actype.weight].altitude.min) + aircraft_classes[nac.actype.weight].altitude.min) * 1000;
-		nac.speed = aircraft_classes[nac.actype.weight].speeds.cruize + parseInt(Math.random() * 40 + 20);
-		nac.ifr = !(nac.alt < 10000 && Math.random() > .3);
-
-		nac.x = Math.random() * _config.world_width - _config.offset.x;
-		nac.y = Math.random() * _config.world_height - _config.offset.y;
-		nac.hdg = Math.random() * 360;
-		nac.dest_alt = 0;
-		nac.dest_hdg = nac.hdg;
-		nac.callsign = get_random_airline() + Math.floor(Math.random() * 89 + 10);
-		nac.elements = {};
-		nac.data_block = {};
-		nac.last_positions = [[_config.world_width*2,_config.world_height*2],[_config.world_width*2,_config.world_height*2],[_config.world_width*2,_config.world_height*2],[_config.world_width*2,_config.world_height*2],[_config.world_width*2,_config.world_height*2]];
-		nac.last_position_blips = [];
-		nac.dest = 'KBOS';
-		nac.show_datablock = true;
-		nac.warning = false;
-
-		aircraft.push(nac);
-	}*/
 
 	initializeAircraftPool();
 
@@ -59,8 +38,9 @@ function preload() {
 
 function create() {
 	game.add.sprite(-70, -70, 'a90');
-	game.add.sprite(-70, -70, 'southflow');
-	game.add.sprite(-70, -70, 'westflow');
+	flows.southflow = game.add.sprite(-70, -70, 'northflow');
+	flows.westflow = game.add.sprite(-70, -70, 'westflow');
+	flows.northflow = game.add.sprite(-70, -70, 'southflow');
 
 	box = game.add.inputField(10, _config.world_height - 50, {
 		font: '12px Arial',
@@ -80,12 +60,10 @@ function create() {
 		if(command_attempt === true) {
 			// nothing
 		} else if(command_attempt != false) {
-			chat = chat.splice(1);
-			chat.push(command_attempt);
+			say(command_attempt);
 		} else {
 			var val = box.value.substr(0, 3) + ' ' + box.value.substr(3);
-			chat = chat.splice(1);
-			chat.push(val);
+			say(val);
 			parseATCInstruction(val);
 		}
 		
@@ -93,23 +71,30 @@ function create() {
 		opened_chat = false;
 	});
 
+	game.input.activePointer.leftButton.onDown.add(function() {
+		leftClickDown();
+	}, this);
+	game.input.activePointer.leftButton.onUp.add(function() {
+		leftClickUp();
+	}, this);
+
 	//game.add.text(0 + _config.offset.x, 0 + _config.offset.y, "x", { font: "30px Arial", fill: "rgba(0, 0, 255, 1)" });
 	
 	initializeTracks();
 	
 	chat_text = game.add.text(10, _config.world_height - 170, "", { font: "14px Arial", fill: "rgba(0, 255, 0, 1)" });
-	landing_count = game.add.text(_config.world_width - 100, 10, "Landings: ", { font: "16px Arial", fill: "rgba(0, 255, 50, 1)" });
+	landing_count = game.add.text(_config.world_width - 120, 10, "Landings: ", { font: "16px Arial", fill: "rgba(0, 255, 50, 1)" });
+	vectorlabel = game.add.text(_config.world_width * 2, _config.world_height * 2, '', { font: "14px Arial", fill: "rgba(255, 255, 255, 1)" });
 	
 	speak_key = game.input.keyboard.addKey(Phaser.Keyboard.CONTROL);
 	chat_key = game.input.keyboard.addKey(Phaser.Keyboard.ENTER);
 
-	chat = chat.splice(1);
-	chat.push('Use /load <1-3> to begin.');
+	say('Use "/load <1-' + scenarios.length + '>" to begin.');
 }
 
 var tick = 0;
 function update() {
-	if(tick % (60 * 1) == 0) {
+	if(tick % (60) == 0) {
 
 		for(var i = 0; i < aircraft.length; i++) {
 			var ac = aircraft[i];
@@ -187,6 +172,7 @@ function update() {
 			 * Update datablock text 
 			 */
 			ac.data_block.speed.setText(pad(Math.floor(ac.speed), 3));
+			ac.data_block.dest.setText(ac.dest);
 
 			if(ac.dest_alt != 0) {
 				if(ac.dest_alt > ac.alt) {
@@ -233,7 +219,7 @@ function update() {
 			/*
 			 * Show collision circles
 			 */
-			ac.elements.collision_circle.setTo(ac.x + _config.offset.x + 2, ac.y + _config.offset.y + 13, 41.1);
+			ac.elements.collision_circle.setTo(ac.x + _config.offset.x + 2, ac.y + _config.offset.y + 13, 60);
 
 			var found_collision = false;
 			for(var j = 0; j < aircraft.length; j++) {
@@ -250,6 +236,16 @@ function update() {
 			
 			// KBOS
 			if(Phaser.Math.distance(ac.x, ac.y, -71, -61) < 28 && ac.alt < 1000 && ac.dest == 'KBOS') {
+				landed = true;
+			} else if(Phaser.Math.distance(ac.x, ac.y, -57, -339) < 28 && ac.alt < 1000 && ac.dest == 'KLWM') {
+				landed = true;
+			} else if(Phaser.Math.distance(ac.x, ac.y, -233, 183) < 28 && ac.alt < 1000 && ac.dest == 'KBED') {
+				landed = true;
+			} else if(Phaser.Math.distance(ac.x, ac.y, -228, 43) < 28 && ac.alt < 1000 && ac.dest == 'KOWD') {
+				landed = true;
+			} else if(Phaser.Math.distance(ac.x, ac.y, 97, 206) < 28 && ac.alt < 1000 && ac.dest == 'KGHG') {
+				landed = true;
+			} else if(Phaser.Math.distance(ac.x, ac.y, 58, -206) < 28 && ac.alt < 1000 && ac.dest == 'KBVY') {
 				landed = true;
 			}
 
@@ -270,7 +266,11 @@ function update() {
 	}
 
 	chat_text.setText(chat.join('\n'));
-	landing_count.setText("Landings: " + landings);
+	if(current_scenario != null) {
+		landing_count.setText("Landings: " + landings + "/" + scenarios[current_scenario].aircraft.length + "\n" + scenarios[current_scenario].name);
+	} else {
+		landing_count.setText("Load scenerio");
+	}
 
 	if(speak_key.isDown && !begun_listening) {
 		begun_listening = true;
@@ -282,8 +282,7 @@ function update() {
 			instruction = instruction.replace(',', '');
 			instruction = instruction.toLowerCase();
 
-			chat = chat.splice(1);
-			chat.push(instruction);
+			say(instruction);
 
 			parseATCInstruction(instruction);
 			console.log('You said: ', instruction);
@@ -298,11 +297,24 @@ function update() {
 		box.startFocus();
 	}
 
-	if(game.input.activePointer.leftButton.isDown) {
+	if(clicked_position != null) {
+		vectorline.setTo(clicked_position[0], clicked_position[1], game.input.activePointer.position.x, game.input.activePointer.position.y);
+		
+		vectorlabel.position.x = game.input.activePointer.position.x + 20;
+		vectorlabel.position.y = game.input.activePointer.position.y - 30;
+		
+		var calculated_angle = toDegrees(Phaser.Math.angleBetween(clicked_position[0], clicked_position[1], game.input.activePointer.position.x, game.input.activePointer.position.y)) + 90;
+		var calculated_distance = Phaser.Math.distance(clicked_position[0], clicked_position[1], game.input.activePointer.position.x, game.input.activePointer.position.y);
+		calculated_angle = Math.round(calculated_angle < 0 ? calculated_angle + 360 : calculated_angle);
+		vectorlabel.setText(calculated_angle + '° ' + (calculated_distance / 13.7).toFixed(1) + 'nm');
+	}
+
+
+	/*if(game.input.activePointer.leftButton.isDown) {
 		var x = game.input.activePointer.position.x - _config.offset.x;
 		var y = game.input.activePointer.position.y - _config.offset.y;
 		game.add.text(game.input.activePointer.position.x, game.input.activePointer.position.y, '('+x+','+y+')', { font: "15px Arial", fill: "rgba(0, 0, 255, 1)" });
-	}
+	}*/
 
 	// engine bug
     box.update();
@@ -324,6 +336,11 @@ function render() {
 		if(ac.warning) {
 			game.debug.geom(ac.elements.collision_circle, 'rgba(255, 0, 0, 0.2)');
 		}
+	}
+
+	if(clicked_position != null) {
+		console.warn('drawing vectorline');
+		game.debug.geom(vectorline);
 	}
 }
 
@@ -405,7 +422,7 @@ function initializeScenario(scenario_id) {
 		nac.dest_hdg = nac.hdg;
 		nac.callsign = get_random_airline() + Math.floor(Math.random() * 89 + 10);
 		nac.last_positions = [[_config.world_width*2,_config.world_height*2],[_config.world_width*2,_config.world_height*2],[_config.world_width*2,_config.world_height*2],[_config.world_width*2,_config.world_height*2],[_config.world_width*2,_config.world_height*2]];
-		nac.dest = 'KBOS';
+		nac.dest = airports[parseInt(Math.random() * airports.length)];
 		nac.show_datablock = true;
 		nac.warning = false;
 
@@ -414,8 +431,14 @@ function initializeScenario(scenario_id) {
 		nac.used = true;
 	}
 
-	chat = chat.splice(1);
-	chat.push('Scenario #' + (scenario_id+1) + ' loaded.');
+	$.each(flows, function(i, v) {
+		v.alpha = 0;
+	});
+	
+	flows[scenarios[scenario_id].flow].alpha = 1;
+
+	current_scenario = scenario_id;
+	say('Scenario #' + (scenario_id+1) + ' loaded. ' + scenarios[scenario_id].name);
 }
 
 function initializeTracks() {
@@ -480,6 +503,7 @@ function initializeTracks() {
 		ac.used = false;
 	}
 
+	vectorline = new Phaser.Line(0,0,0,0);
 }
 
 function parseCommand(command) {
@@ -498,4 +522,22 @@ function parseCommand(command) {
 	}
 
 	return "Error: Command doesn't exist.";
+}
+
+function say(text) {
+	chat = chat.splice(1);
+	chat.push(text);
+}
+
+function leftClickDown() {
+	clicked_position = [game.input.activePointer.position.x, game.input.activePointer.position.y];
+}
+
+function leftClickUp() {
+	clicked_position = null;
+	setTimeout(function() {
+		clicked_position = null;
+		vectorlabel.position.x = _config.world_width * 2
+		vectorlabel.position.y = _config.world_height * 2;
+	}, 300);
 }

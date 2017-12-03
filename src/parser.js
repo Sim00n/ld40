@@ -48,8 +48,7 @@ function parseATCInstruction(instruction) {
 		for(var i = 0; i < aircraft.length; i++) {
 			if(aircraft[i].callsign == actual_name) {
 				aircraft[i].dest_hdg = parseInt(heading_matched[5]);
-				chat = chat.splice(1);
-				chat.push("Fly heading " + aircraft[i].dest_hdg + ", " + aircraft[i].callsign);
+				say("Fly heading " + aircraft[i].dest_hdg + ", " + aircraft[i].callsign);
 				console.log('Changing ' + aircraft[i].callsign + '\'s heading from ' + aircraft[i].hdg + ' to ' + aircraft[i].dest_hdg);
 			}
 		}
@@ -81,12 +80,10 @@ function parseATCInstruction(instruction) {
 			for(var i = 0; i < aircraft.length; i++) {
 				if(aircraft[i].callsign == actual_name) {
 					aircraft[i].dest_alt = dest_alt;
-					chat = chat.splice(1);
-					
 					if(aircraft[i].dest_alt > aircraft[i].alt) {
-						chat.push("Descend and maintain " + aircraft[i].dest_alt + ", " + aircraft[i].callsign);
+						say("Descend and maintain " + aircraft[i].dest_alt + ", " + aircraft[i].callsign);
 					} else {
-						chat.push("Climb and maintain " + aircraft[i].dest_alt + ", " + aircraft[i].callsign);
+						say("Climb and maintain " + aircraft[i].dest_alt + ", " + aircraft[i].callsign);
 					}
 				}
 			}
@@ -107,8 +104,7 @@ function parseATCInstruction(instruction) {
 		for(var i = 0; i < aircraft.length; i++) {
 			if(aircraft[i].callsign == actual_name) {
 				aircraft[i].show_datablock = false;
-				chat = chat.splice(1);
-				chat.push("Wilco, see ya, " + aircraft[i].callsign);
+				say("Wilco, see ya, " + aircraft[i].callsign);
 			}
 		}
 	}
