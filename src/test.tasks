@@ -1,0 +1,35 @@
+ Ludum Dare 40:
+ 	Day 1:
+ 		Did absolutely nothing.
+ 	Day 2:
+		☐	Add initial instructions screen / help text
+		
+
+
+
+
+＿＿＿＿＿＿＿＿＿＿＿＿＿＿＿＿＿＿＿
+Archive:
+	✔	Add a timer "since last departure" @done (17-12-03 16:05) @project(Ludum Dare 40)
+	✔	Win message @done (17-12-03 15:18) @project(Ludum Dare 40)
+	✔	Reset landings counter when resetting the scenarios @done (17-12-03 15:18) @project(Ludum Dare 40)
+	✔	Add lost separatation consequences @done (17-12-03 14:57) @project(Ludum Dare 40)
+	✔	Add collision consequences @done (17-12-03 14:57) @project(Ludum Dare 40)
+	✔	Add ac.used checking in parser to avoid talking to ghost aircraft. @done (17-12-03 14:57) @project(Ludum Dare 40)
+	✔	Fix landing script @done (17-12-03 14:46) @project(Ludum Dare 40)
+	✔	Don't check for collisions below 500ft (for departing a/c) @done (17-12-03 14:24) @project(Ludum Dare 40)
+	✔	Add dest_speed @done (17-12-03 14:23) @project(Ludum Dare 40)
+	✔ Add new aircraft in scenario that are taking off from airports @done (17-12-03 14:22) @project(Ludum Dare 40)
+	✔	Fix opening chat window with the enther key @done (17-12-03 13:12) @project(Ludum Dare 40)
+	✔	Fix aircraft sharing callsigns @done (17-12-03 13:04) @project(Ludum Dare 40)
+	✔	Add commands to change speed @done (17-12-03 13:04) @project(Ludum Dare 40)
+	✔	Speed control @done (17-12-03 12:59) @project(Ludum Dare 40)
+	✔	Speed  restrictions between final and cruize @done (17-12-03 12:59) @project(Ludum Dare 40)
+	✔	Add command cheat sheet @done (17-12-03 12:16) @project(Ludum Dare 40)
+	✔	Add collision detection @done (17-12-03 12:10) @project(Ludum Dare 40)
+	✔	Climb on descend and viceversa in parser's say() @done (17-12-03 11:45) @project(Ludum Dare 40)
+	✔	Add ability to hold (either left or right) decided by ATC @done (17-12-03 11:39) @project(Ludum Dare 40)
+	✔ Recognize left/right heading when turning @done (17-12-03 10:48) @project(Ludum Dare 40)
+	✔ Finish up handoffs to center @done (17-12-03 10:25) @project(Ludum Dare 40)
+	✔ Add handoffs to tower @done (17-12-03 10:24) @project(Ludum Dare 40)
+	✔ Adjust descend rates @done (17-12-03 10:22) @project(Ludum Dare 40)

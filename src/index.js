@@ -14,7 +14,12 @@ var flows = {};
 var clicked_position = null;
 var vectorline = null;
 var vectorlabel = null;
+var radarline = null;
+var radard_ticker = 0;
 var box = null;
+var radarline_sprite = null;
+var cheat_sheet = null;
+var time_of_last_departure = null;
 
 function preload() {
 	game.add.plugin(PhaserInput.Plugin);
@@ -23,8 +28,12 @@ function preload() {
 	game.load.image('northflow', 'assets/maps/northflow.png');
 	game.load.image('southflow', 'assets/maps/southflow.png');
 	game.load.image('greenline', 'assets/greenline.png');
+	game.load.image('radarline', 'assets/illegaltest.png');
+	game.load.image('noise', 'assets/noise.png');
 
 	initializeAircraftPool();
+
+	time_of_last_departure = null;
 
 	/*
 	 * Load the speech recognition module.
@@ -41,6 +50,17 @@ function create() {
 	flows.southflow = game.add.sprite(-70, -70, 'northflow');
 	flows.westflow = game.add.sprite(-70, -70, 'westflow');
 	flows.northflow = game.add.sprite(-70, -70, 'southflow');
+	
+	for(var y = 0; y <= _config.world_height / 100; y++) {
+		for(var x = 0; x <= _config.world_width / 100; x++) {
+			game.add.sprite(x * 100, y * 100, 'noise');
+		}
+	}
+
+	radarline_sprite = game.add.sprite(_config.world_width / 2, _config.world_height / 2, 'radarline');
+	radarline_sprite.anchor.x = 1;
+	radarline_sprite.anchor.y = 0;
+	radarline_sprite.alpha = 0.3;
 
 	box = game.add.inputField(10, _config.world_height - 50, {
 		font: '12px Arial',
@@ -51,8 +71,10 @@ function create() {
 		borderWidth: 1,
 		borderColor: '#3e8033',
 		borderRadius: 0,
-		placeHolder: '...',
+		placeHolder: 'Use <enter> to type or <ctrl> to speak ...',
 	});
+
+	box.focusOutOnEnter = false;
 
 	$(document).on('change', box, function(e) {
 		
@@ -62,8 +84,8 @@ function create() {
 		} else if(command_attempt != false) {
 			say(command_attempt);
 		} else {
+			say(box.value);
 			var val = box.value.substr(0, 3) + ' ' + box.value.substr(3);
-			say(val);
 			parseATCInstruction(val);
 		}
 		
@@ -85,7 +107,8 @@ function create() {
 	chat_text = game.add.text(10, _config.world_height - 170, "", { font: "14px Arial", fill: "rgba(0, 255, 0, 1)" });
 	landing_count = game.add.text(_config.world_width - 120, 10, "Landings: ", { font: "16px Arial", fill: "rgba(0, 255, 50, 1)" });
 	vectorlabel = game.add.text(_config.world_width * 2, _config.world_height * 2, '', { font: "14px Arial", fill: "rgba(255, 255, 255, 1)" });
-	
+	cheat_sheet = game.add.text(10, _config.world_height / 4, cheat_sheet_text, { font: "12px Arial", fill: "rgba(0, 255, 0, 0.7)" });
+
 	speak_key = game.input.keyboard.addKey(Phaser.Keyboard.CONTROL);
 	chat_key = game.input.keyboard.addKey(Phaser.Keyboard.ENTER);
 
@@ -141,19 +164,61 @@ function update() {
 			}
 
 			/*
+			 * Calculate the altitude change
+			 */
+			if(ac.dest_speed != ac.speed) {
+
+				var delta_speed = aircraft_classes[ac.actype.weight].sc;
+
+				if(ac.speed > ac.dest_speed) {
+					if(ac.alt > ac.dest_alt) {
+						delta_speed * 0.5;
+					}
+					ac.speed -= delta_speed;
+				} else if(ac.speed < ac.dest_speed){
+					if(ac.alt < ac.dest_alt) {
+						delta_speed * 0.5;
+					}
+					if(ac.speed + delta_speed > 250 && ac.alt < 10000) {
+						// dont allow >250kt below 10,000
+					} else {
+						ac.speed += delta_speed;
+					}
+				}
+
+				if(Math.abs(ac.speed - ac.dest_speed) < delta_speed + 5) {
+					ac.speed = ac.dest_speed;
+				}
+			}
+
+			/*
 			 * Calculate the heading change
 			 */
+			ac.hdg = (ac.hdg + 360) % 360;
+			ac.dest_hdg = (ac.dest_hdg + 360) % 360;
+			
 			if(ac.dest_hdg != ac.hdg) {
 				var hdg_delta = (aircraft_classes[ac.actype.weight].tr - (ac.speed / 50));
 				//console.log("Heading delta for " + ac.callsign + ": " + hdg_delta + " - HDG: " + ac.hdg + " | DHDG: " + ac.dest_hdg);
-				if(ac.dest_hdg > ac.hdg) {
+
+				
+				if(ac.delta_dir > 0) {
+					if(ac.holding) {
+						hdg_delta * 0.1;
+						ac.dest_hdg += hdg_delta;
+					}
 					ac.hdg += hdg_delta;
-				} else if(ac.dest_hdg < ac.hdg) {
+				} else if(ac.delta_dir < 0) {
+					if(ac.holding) {
+						hdg_delta * 0.25;
+						ac.dest_hdg -= hdg_delta;
+					}
 					ac.hdg -= hdg_delta;
 				}
 
 				if(Math.abs(ac.dest_hdg - ac.hdg) < aircraft_classes[ac.actype.weight].tr- (ac.speed / 50)) {
 					ac.hdg = ac.dest_hdg;
+					ac.delta_dir = 0;
 				}
 			}
 
@@ -224,44 +289,57 @@ function update() {
 			var found_collision = false;
 			for(var j = 0; j < aircraft.length; j++) {
 				if(i != j) {
-					var abc = ac.elements.collision_circle.distance(aircraft[j].elements.collision_circle);
-					//console.log(ac.callsign + '-' + aircraft[j].callsign + ": " + abc);
-					if(abc < (5 * 13.7)) {
+					var collision_distance = ac.elements.collision_circle.distance(aircraft[j].elements.collision_circle);
+					
+					// Warning rings
+					if(collision_distance < (5 * 13.7)) {
 						found_collision = true;
+					}
+
+					if(ac.alt > 1000 && aircraft[j].alt > 1000 && ac.used) {
+						// collision
+						if(collision_distance < 5 && Math.abs(ac.alt - aircraft[j].alt) < 100) {	// 5px - very close
+							ac.dest_alt = 0;
+							ac.speed = 50;
+							ac.dest_speed = 0;
+							ac.dest_hdg = ac.hdg;
+							ac.crashed = true;
+							ac.show_datablock = false;
+							ac.used = false;
+
+							say("You've caused an accident! Two aircraft went down!");
+
+						// loss of separation
+						} else if(collision_distance < (3 * 13.7) && Math.abs(ac.alt - aircraft[j].alt) < 1000) {	// 5px - very close
+							
+						}
 					}
 				}
 			}
-
-			var landed = false;
-			
-			// KBOS
-			if(Phaser.Math.distance(ac.x, ac.y, -71, -61) < 28 && ac.alt < 1000 && ac.dest == 'KBOS') {
-				landed = true;
-			} else if(Phaser.Math.distance(ac.x, ac.y, -57, -339) < 28 && ac.alt < 1000 && ac.dest == 'KLWM') {
-				landed = true;
-			} else if(Phaser.Math.distance(ac.x, ac.y, -233, 183) < 28 && ac.alt < 1000 && ac.dest == 'KBED') {
-				landed = true;
-			} else if(Phaser.Math.distance(ac.x, ac.y, -228, 43) < 28 && ac.alt < 1000 && ac.dest == 'KOWD') {
-				landed = true;
-			} else if(Phaser.Math.distance(ac.x, ac.y, 97, 206) < 28 && ac.alt < 1000 && ac.dest == 'KGHG') {
-				landed = true;
-			} else if(Phaser.Math.distance(ac.x, ac.y, 58, -206) < 28 && ac.alt < 1000 && ac.dest == 'KBVY') {
-				landed = true;
-			}
-
-			if(landed) {
-				ac.x = _config.world_width * 2;
-				ac.y = _config.world_height * 2;
-				ac.hdg = 0;
-				ac.dest_hdg = 0;
-				ac.alt = 0;
-				ac.dest_alt = 0;
-				ac.speed = 0;
-				ac.used = false;
-				landings ++;
-			}
-
 			ac.warning = found_collision;
+
+
+			/*
+			 * Detect an aircraft has safely landed at an airport
+			 */
+			detectLanding(ac);
+
+		}
+
+		if(Math.random() > 0.9 && time_of_last_departure == null) {
+			dispatchDeparture();
+		}
+
+		if(game.time.totalElapsedSeconds() - time_of_last_departure > 60) {
+			time_of_last_departure = null;
+		}
+
+		if(current_scenario != null && scenarios[current_scenario]) {
+			if(parseInt(landings) == scenarios[current_scenario].aircraft.length) {
+				say("Congratulations on passing scenario #"+ (current_scenario + 1));
+				say("Use \"/load <1-" + scenarios.length + ">\" to load the next scenario.");
+				landings = 0;
+			}
 		}
 	}
 
@@ -309,12 +387,16 @@ function update() {
 		vectorlabel.setText(calculated_angle + '° ' + (calculated_distance / 13.7).toFixed(1) + 'nm');
 	}
 
+	radard_ticker--
+	if(radard_ticker < -360) radard_ticker = 0;
+	radarline_sprite.angle = radard_ticker;
 
-	/*if(game.input.activePointer.leftButton.isDown) {
+
+	if(game.input.activePointer.leftButton.isDown) {
 		var x = game.input.activePointer.position.x - _config.offset.x;
 		var y = game.input.activePointer.position.y - _config.offset.y;
 		game.add.text(game.input.activePointer.position.x, game.input.activePointer.position.y, '('+x+','+y+')', { font: "15px Arial", fill: "rgba(0, 0, 255, 1)" });
-	}*/
+	}
 
 	// engine bug
     box.update();
@@ -339,9 +421,10 @@ function render() {
 	}
 
 	if(clicked_position != null) {
-		console.warn('drawing vectorline');
-		game.debug.geom(vectorline);
+		game.debug.geom(vectorline, '#ffffff');
 	}
+	
+	//game.debug.geom(radarline, 'rgba(0, 255, 0, 0.1');
 }
 
 
@@ -356,6 +439,7 @@ function initializeAircraftPool() {
 		nac.type = nac.actype.type;
 		nac.alt = 0; //parseInt(Math.random() * (aircraft_classes[nac.actype.weight].altitude.max - aircraft_classes[nac.actype.weight].altitude.min) + aircraft_classes[nac.actype.weight].altitude.min) * 1000;
 		nac.speed = 0; //aircraft_classes[nac.actype.weight].speeds.cruize + parseInt(Math.random() * 40 + 20);
+		nac.dest_speed = 0; //aircraft_classes[nac.actype.weight].speeds.cruize + parseInt(Math.random() * 40 + 20);
 		nac.ifr = true; //!(nac.alt < 10000 && Math.random() > .3);
 
 		nac.x = 0; //_config.world_width * 2; // Math.random() * _config.world_width - _config.offset.x;
@@ -363,6 +447,8 @@ function initializeAircraftPool() {
 		nac.hdg = 0; //Math.random() * 360;
 		nac.dest_alt = 0;
 		nac.dest_hdg = 0;
+		nac.delta_dir = 0;
+		nac.holding = false;
 		nac.callsign = get_random_airline() + Math.floor(Math.random() * 89 + 10);
 		nac.elements = {};
 		nac.data_block = {};
@@ -370,7 +456,9 @@ function initializeAircraftPool() {
 		nac.last_position_blips = [];
 		nac.dest = 'KBOS';
 		nac.show_datablock = true;
+		
 		nac.warning = false;
+		nac.crashed = false;
 
 		aircraft.push(nac);
 	}
@@ -393,6 +481,8 @@ function initializeScenario(scenario_id) {
 		}
 	}
 
+	var used_callsigns = [];
+
 	for(var i = 0; i < scenarios[scenario_id].aircraft.length; i++) {
 		var nac = null;
 		for(var j = 0; j < aircraft.length; j++) {
@@ -412,22 +502,32 @@ function initializeScenario(scenario_id) {
 		nac.type = nac.actype.type;
 		nac.alt = tpl[3];
 		nac.speed = tpl[4];
+		nac.dest_speed = nac.speed;
 		nac.ifr = true;
 
 		nac.x = tpl[0]
 		nac.y = tpl[1];
-		console.log("Setting HDG " + tpl[2] + " for " + nac.callsign);
 		nac.hdg = tpl[2];
 		nac.dest_alt = nac.alt;
 		nac.dest_hdg = nac.hdg;
-		nac.callsign = get_random_airline() + Math.floor(Math.random() * 89 + 10);
 		nac.last_positions = [[_config.world_width*2,_config.world_height*2],[_config.world_width*2,_config.world_height*2],[_config.world_width*2,_config.world_height*2],[_config.world_width*2,_config.world_height*2],[_config.world_width*2,_config.world_height*2]];
-		nac.dest = airports[parseInt(Math.random() * airports.length)];
+		nac.dest = 'KBOS'; //airports[airports_indexes[parseInt(Math.random() * airports_indexes.length)]].name;
 		nac.show_datablock = true;
 		nac.warning = false;
+		//console.log("Setting HDG " + tpl[2] + " for " + nac.callsign);
+
+		/*
+		 * Make sure the generated callsign is unique.
+		 */
+		var callsign = null;
+		do {
+			new_callsing = get_random_airline() + Math.floor(Math.random() * 89 + 10);
+			used_callsigns.push(new_callsing);
+		} while(used_callsigns.indexOf(new_callsing) == -1);
+		nac.callsign = new_callsing;
+
 
 		nac.data_block.callsign.setText(nac.callsign);
-
 		nac.used = true;
 	}
 
@@ -504,6 +604,7 @@ function initializeTracks() {
 	}
 
 	vectorline = new Phaser.Line(0,0,0,0);
+	radarline = new Phaser.Line(0,0,0,0);
 }
 
 function parseCommand(command) {
@@ -540,4 +641,70 @@ function leftClickUp() {
 		vectorlabel.position.x = _config.world_width * 2
 		vectorlabel.position.y = _config.world_height * 2;
 	}, 300);
+}
+
+function detectLanding(ac) {
+	var landed = false;
+	
+	for(var i = 0; i < airports_indexes.length; i++) {
+		var ap = airports[airports_indexes[i]];
+		if(Phaser.Math.distance(ac.x, ac.y, ap.x, ap.y) < 28 && ac.alt < 1000 && ac.dest == ap.name) {
+			landed = true;
+		}		
+	}
+
+	if(landed) {
+		ac.x = _config.world_width * 2;
+		ac.y = _config.world_height * 2;
+		ac.hdg = 0;
+		ac.dest_hdg = 0;
+		ac.alt = 0;
+		ac.dest_alt = 0;
+		ac.speed = 0;
+		ac.used = false;
+		landings ++;
+	}
+}
+
+function dispatchDeparture() {
+	console.log("Dispatching departure");
+	
+	if(current_scenario != null) {
+		if(scenarios[current_scenario].departures.length > 0) {
+			var dep_id = parseInt(Math.random() * scenarios[current_scenario].departures.length)
+			var dep = scenarios[current_scenario].departures[dep_id];
+
+			var nac = null;
+			for(var j = 0; j < aircraft.length; j++) {
+				if(!aircraft[j].used) {
+					nac = aircraft[j];
+					break;
+				}
+			}
+
+			nac.callsign = get_random_airline() + Math.floor(Math.random() * 89 + 10);
+			nac.actype = aircraft_types[dep[3]];
+			nac.type = nac.actype.type;
+			nac.alt = 0;
+			nac.speed = aircraft_classes[nac.actype.weight].speeds.climb;
+			nac.dest_speed = aircraft_classes[nac.actype.weight].speeds.cruize;
+			nac.ifr = true;
+
+			nac.x = airports[dep[0]].x;
+			nac.y = airports[dep[0]].y;
+			nac.hdg = dep[1]
+			nac.dest_alt = dep[2];
+			nac.dest_hdg = nac.hdg;
+			nac.dest = dep[4];
+			nac.show_datablock = true;
+			nac.warning = false;
+
+			nac.used = true;
+			nac.data_block.callsign.setText(nac.callsign);
+
+			//console.log("Creating " + nac.callsign + " at (" + nac.x + ", " + nac.y + ") at " + airports[dep[0]].name);
+			
+			time_of_last_departure = game.time.totalElapsedSeconds();
+		}
+	}
 }

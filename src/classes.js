@@ -5,14 +5,15 @@ var aircraft_classes = {
 			'cruize': 	400,
 			'descend': 	250,
 			'approach': 200,
-			'final': 	180,
+			'final': 	130,
 		},
 		'altitude': {
 			'min': 		20,
 			'max': 		40,
 		},
-		'cr': 			1500 / 60,
+		'cr': 			3000 / 60,
 		'tr': 			17,
+		'sc': 			1,
 	},
 
 	'heavy': {
@@ -21,14 +22,15 @@ var aircraft_classes = {
 			'cruize': 	500,
 			'descend': 	250,
 			'approach': 210,
-			'final': 	180,
+			'final': 	140,
 		},
 		'altitude': {
 			'min': 		26,
 			'max': 		44,
 		},
-		'cr': 			1800 / 60,
+		'cr': 			4000 / 60,
 		'tr': 			15,
+		'sc': 			0.8,
 	},
 
 	'small': {
@@ -43,8 +45,9 @@ var aircraft_classes = {
 			'min': 		 3,
 			'max': 		10,
 		},
-		'cr': 			500 / 60,
+		'cr': 			1500 / 60,
 		'tr': 			18,
+		'sc': 			0.5,
 	},
 
 	'smallplus': {
@@ -53,14 +56,15 @@ var aircraft_classes = {
 			'cruize': 	250,
 			'descend': 	230,
 			'approach': 200,
-			'final': 	140,
+			'final': 	100,
 		},
 		'altitude': {
 			'min': 		12,
 			'max': 		26,
 		},
-		'cr': 			700 / 60,
+		'cr': 			2000 / 60,
 		'tr': 			20,
+		'sc': 			0.6,
 	}
 };
 
@@ -103,14 +107,41 @@ var aircraft_types = [
 	},
 ];
 
-var airports = [
-	'KBOS',
-	'KOWD',
-	'KBED',
-	'KLWM',
-	'KBVY',
-	'KGHG'
-];
+
+var remotes = ['KJFK', 'KATL', 'CYYZ', 'EPWA', 'EGLL', 'KMIA'];
+var airports_indexes = ['KBOS', 'KOWD', 'KBED', 'KLWM', 'KBVY', 'KGHG'];
+var airports = {
+	'KBOS': {
+		'name': 'KBOS',
+		'x': -71,
+		'y': -61
+	},
+	'KOWD': {
+		'name': 'KOWD',
+		'x': -228,
+		'y': 43
+	},
+	'KBED': {
+		'name': 'KBED',
+		'x': -233,
+		'y': -183
+	},
+	'KLWM': {
+		'name': 'KLWM',
+		'x': -57,
+		'y': -339
+	},
+	'KBVY': {
+		'name': 'KBVY',
+		'x': 58,
+		'y': -206
+	},
+	'KGHG': {
+		'name': 'KGHG',
+		'x': 97,
+		'y': 206
+	}
+};
 
 var scenarios = [
 	{
@@ -123,6 +154,14 @@ var scenarios = [
 
 			[-204, 304, 360, 5500, 160, 6],
 			[-210, 416, 5, 5000, 180, 7]
+		],
+		departures: [
+			['KBOS', 246, 22000, 0, 'KJFK'],
+			['KOWD', 250, 32000, 2, 'KATL'],
+			['KGHG', 300, 28000, 1, 'CYYZ'],
+			['KLWM', 061, 35000, 2, 'EPWA'],
+			['KBED', 061, 35000, 3, 'EPWA'],
+			['KBVY', 061, 35000, 4, 'EPWA'],
 		],
 		flow: 'westflow',
 		name: 'Easy North Flow 1'
@@ -141,6 +180,14 @@ var scenarios = [
 			[-204, 304, 360, 5500, 360, 5],
 			[-210, 416, 5, 5000, 380, 4]
 		],
+		departures: [
+			['KBOS', 246, 22000, 0, 'KJFK'],
+			['KOWD', 250, 32000, 2, 'KATL'],
+			['KGHG', 300, 28000, 1, 'CYYZ'],
+			['KLWM', 061, 35000, 2, 'EPWA'],
+			['KBED', 061, 35000, 3, 'EPWA'],
+			['KBVY', 061, 35000, 4, 'EPWA'],
+		],
 		flow: 'southflow',
 		name: 'Easy North Flow 2'
 	},
@@ -156,6 +203,14 @@ var scenarios = [
 			[5, -347, 140, 5000, 200, 2],
 			[-184, -274, 50, 8000, 180, 5],
 
+		],
+		departures: [
+			['KBOS', 246, 22000, 0, 'KJFK'],
+			['KOWD', 250, 32000, 2, 'KATL'],
+			['KGHG', 300, 28000, 1, 'CYYZ'],
+			['KLWM', 061, 35000, 2, 'EPWA'],
+			['KBED', 061, 35000, 3, 'EPWA'],
+			['KBVY', 061, 35000, 4, 'EPWA'],
 		],
 		flow: 'northflow',
 		name: 'Busy Night'
@@ -185,7 +240,34 @@ var scenarios = [
 
 
 		],
+		departures: [
+			['KBOS', 246, 22000, 0, 'KJFK'],
+			['KOWD', 250, 32000, 2, 'KATL'],
+			['KGHG', 300, 28000, 1, 'CYYZ'],
+			['KLWM', 061, 35000, 2, 'EPWA'],
+			['KBED', 061, 35000, 3, 'EPWA'],
+			['KBVY', 061, 35000, 4, 'EPWA'],
+		],
 		flow: 'northflow',
 		name: 'Boeing FlyIn'
 	}
 ];
+
+var cheat_sheet_text = '\
+Instruction cheat sheet:\n\
+  DAL10 turn left\\right heading 120\n\
+  AAL10 fly heading 190\n\
+  JBU10 climb and maintain 12000\n\
+  SWA10 descend and maintain 3000\n\
+  LOT10 cleared for the approach\n\
+  JBU10 enter left\\right hold\n\
+  AAL10 reduce\\increase speed to 200\n\
+  DAL10 contact boston center\n\
+  SWA10 contact tower\n\n\
+Airlines:\n\
+  AAL - american\n\
+  DAL - delta\n\
+  JBU - jetblue\n\
+  LOT - lot\n\
+  SWA - southwest\
+';
