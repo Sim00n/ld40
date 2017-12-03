@@ -271,3 +271,19 @@ Airlines:\n\
   LOT - lot\n\
   SWA - southwest\
 ';
+
+var help_text = '\
+Instructions:\n\n\
+Use turns, descends and speed adjustments to vector aircraft\n\
+to their destinations. Avoid collisions and watch out for \n\
+departures from Boston and airports around it. An aircraft\n\
+will land if it is within 1 miles of the airport and below 1000ft.\n\n\
+        Callsign-->        DAL52\n\
+        Speed----->       400   050          <---Altitude (in 100s of feet)\n\
+        A/C Type-->      B737 EPWA     <---Destination Airport\n\
+\n\
+       120↑200   <-- aircraft at 12,000ft, climbing to 20,000ft\n\
+\n\n\
+APPROACHING OVERLOAD\n\
+  - made by Szymon Puzdrowski for Ludum Dare 40.\
+';

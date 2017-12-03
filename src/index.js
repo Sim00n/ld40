@@ -19,6 +19,7 @@ var radard_ticker = 0;
 var box = null;
 var radarline_sprite = null;
 var cheat_sheet = null;
+var help_sheet = null;
 var time_of_last_departure = null;
 
 function preload() {
@@ -108,6 +109,7 @@ function create() {
 	landing_count = game.add.text(_config.world_width - 120, 10, "Landings: ", { font: "16px Arial", fill: "rgba(0, 255, 50, 1)" });
 	vectorlabel = game.add.text(_config.world_width * 2, _config.world_height * 2, '', { font: "14px Arial", fill: "rgba(255, 255, 255, 1)" });
 	cheat_sheet = game.add.text(10, _config.world_height / 4, cheat_sheet_text, { font: "12px Arial", fill: "rgba(0, 255, 0, 0.7)" });
+	help_sheet = game.add.text(_config.world_width * 0.8, _config.world_height / 2, help_text, { font: "12px Arial", fill: "rgba(0, 255, 0, 0.7)" });
 
 	speak_key = game.input.keyboard.addKey(Phaser.Keyboard.CONTROL);
 	chat_key = game.input.keyboard.addKey(Phaser.Keyboard.ENTER);
@@ -392,11 +394,11 @@ function update() {
 	radarline_sprite.angle = radard_ticker;
 
 
-	if(game.input.activePointer.leftButton.isDown) {
+/*	if(game.input.activePointer.leftButton.isDown) {
 		var x = game.input.activePointer.position.x - _config.offset.x;
 		var y = game.input.activePointer.position.y - _config.offset.y;
 		game.add.text(game.input.activePointer.position.x, game.input.activePointer.position.y, '('+x+','+y+')', { font: "15px Arial", fill: "rgba(0, 0, 255, 1)" });
-	}
+	}*/
 
 	// engine bug
     box.update();
